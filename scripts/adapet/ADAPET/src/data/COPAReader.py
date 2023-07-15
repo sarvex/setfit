@@ -34,7 +34,7 @@ class COPAReader(object):
         # Different lbl for each pattern
         self.pet_pvps = self.pet_patterns_effect
         self._num_pets = len(self.pet_pvps)
-        self._pet_names = ["PET{}".format(i+1) for i in range(self._num_pets)]
+        self._pet_names = [f"PET{i + 1}" for i in range(self._num_pets)]
 
     def _get_file(self, split):
         '''
@@ -50,7 +50,7 @@ class COPAReader(object):
         elif split.lower() == "test":
             file = os.path.join("data", "superglue", "COPA", "test.jsonl")
         else:
-            raise ValueError("Invalid split: %s" % split)
+            raise ValueError(f"Invalid split: {split}")
         return file
 
     def get_num_lbl_tok(self):
@@ -69,7 +69,7 @@ class COPAReader(object):
         data = []
 
         with open(file, 'r') as f_in:
-            for line in f_in.readlines():
+            for line in f_in:
                 json_string = json.loads(line)
 
                 premise = json_string["premise"]
@@ -78,11 +78,7 @@ class COPAReader(object):
                 question = json_string["question"]
                 idx = json_string["idx"]
 
-                if "label" in json_string:
-                    lbl = json_string["label"]
-                else:
-                    lbl = -1
-
+                lbl = json_string["label"] if "label" in json_string else -1
                 dict_input = {"premise": premise, "choice1": choice1,
                               "idx": idx, "choice2": choice2, "question": question}
                 dict_output = {"lbl": lbl}
@@ -90,11 +86,11 @@ class COPAReader(object):
                 dict_input_output = {"input": dict_input, "output": dict_output}
                 data.append(dict_input_output)
 
-        if split == 'train' or split == 'unlabeled':
+        if split in ['train', 'unlabeled']:
             mirror_data = []
             for dict_input_output in data:
                 dict_input, dict_output = dict_input_output["input"], \
-                                          dict_input_output["output"]
+                                              dict_input_output["output"]
                 mirror_dict_input = {
                                         "premise": dict_input["premise"],
                                         "choice1": dict_input["choice2"],
@@ -319,8 +315,7 @@ class COPAReader(object):
 
         with open(read_file, 'r') as f_in:
             for ctr, line in enumerate(f_in.readlines()):
-                answer_dict = {}
-                answer_dict["idx"] = ctr
+                answer_dict = {"idx": ctr}
                 pred_lbl = self.list_true_lbl[ctr]
 
                 answer_dict["label"] = pred_lbl

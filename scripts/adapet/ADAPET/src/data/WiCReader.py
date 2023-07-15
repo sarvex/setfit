@@ -22,13 +22,27 @@ class WiCReader(object):
         self.list_true_lbl = []
 
         self.pet_labels = [["yes", "no"], ["yes", "no"], ["b", "2"], ["similar", "different"]]
-        self.pet_patterns = [["\"[SENTENCE1]\" / \"[SENTENCE2]\".", "Similar sense of \"[WORD]\"? {}.".format(self.tokenizer.mask_token), ""],
-                             ["[SENTENCE1] [SENTENCE2]", "Does [WORD] have the same meaing in both sentences? {}.".format(self.tokenizer.mask_token), ""],
-                             ["[WORD].", "Sense (1) (a) '[SENTENCE1]' ({}) '[SENTENCE2]'".format(self.tokenizer.mask_token), ""]]
+        self.pet_patterns = [
+            [
+                "\"[SENTENCE1]\" / \"[SENTENCE2]\".",
+                f'Similar sense of \"[WORD]\"? {self.tokenizer.mask_token}.',
+                "",
+            ],
+            [
+                "[SENTENCE1] [SENTENCE2]",
+                f"Does [WORD] have the same meaing in both sentences? {self.tokenizer.mask_token}.",
+                "",
+            ],
+            [
+                "[WORD].",
+                f"Sense (1) (a) '[SENTENCE1]' ({self.tokenizer.mask_token}) '[SENTENCE2]'",
+                "",
+            ],
+        ]
 
         self.pet_pvps = list(zip(self.pet_patterns, self.pet_labels))
         self._num_pets = len(self.pet_pvps)
-        self._pet_names = ["PET{}".format(i+1) for i in range(self._num_pets)]
+        self._pet_names = [f"PET{i + 1}" for i in range(self._num_pets)]
 
         self.list_true_lbl = []
 
@@ -55,7 +69,7 @@ class WiCReader(object):
         elif split.lower() == "val":
             file = os.path.join("data", "fewglue", "WiC", "val.jsonl")
         else:
-            raise ValueError("Invalid split: %s" % split)
+            raise ValueError(f"Invalid split: {split}")
         return file
 
     def get_num_lbl_tok(self):
@@ -71,7 +85,7 @@ class WiCReader(object):
         data = []
 
         with open(file, 'r') as f_in:
-            for line in f_in.readlines():
+            for line in f_in:
                 json_string = json.loads(line)
 
                 idx = json_string["idx"]
@@ -82,18 +96,17 @@ class WiCReader(object):
                 sentence1 = json_string["sentence1"]
                 sentence2 = json_string["sentence2"]
 
-                if "label" in json_string:
-                    lbl = self.dict_lbl_2_idx[json_string["label"]]
-                else:
-                    lbl = -1
-
+                lbl = (
+                    self.dict_lbl_2_idx[json_string["label"]]
+                    if "label" in json_string
+                    else -1
+                )
                 dict_input = {"idx": idx, "word": word, "sentence1": sentence1, "sentence2": sentence2}
                 dict_output = {"lbl": lbl}
                 dict_input_output = {"input": dict_input, "output": dict_output}
                 data.append(dict_input_output)
 
-        data = np.asarray(data)
-        return data
+        return np.asarray(data)
 
     @property
     def pets(self):
@@ -192,14 +205,10 @@ class WiCReader(object):
 
         with open(read_file, 'r') as f_in:
             for ctr, line in enumerate(f_in.readlines()):
-                answer_dict = {}
-                answer_dict["idx"] = ctr
+                answer_dict = {"idx": ctr}
                 pred_lbl = self.list_true_lbl[ctr]
 
-                if pred_lbl == 0:
-                    answer = "true"
-                else:
-                    answer = "false"
+                answer = "true" if pred_lbl == 0 else "false"
                 answer_dict["label"] = answer
 
                 write_file.write(json.dumps(answer_dict) + "\n")

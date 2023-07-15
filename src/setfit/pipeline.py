@@ -8,5 +8,4 @@ class SetFitPipeline:
         self.model = base_model
 
     def __call__(self, inputs, *args, **kwargs):
-        model_outputs = self.model.predict(inputs)
-        return model_outputs
+        return self.model.predict(inputs)

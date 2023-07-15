@@ -23,14 +23,32 @@ class RTEReader(object):
         self.num_lbl = 2
 
         self.pet_labels = [["Yes", "No"]]
-        self.pet_patterns = [["[HYPOTHESIS] ? [SEP]", " {}, ".format(self.tokenizer.mask_token), "[PREMISE] [SEP]"],
-                             ["\" [HYPOTHESIS] \" ? [SEP]", " {}, ".format(self.tokenizer.mask_token), "\" [PREMISE] \" [SEP]"],
-                             ["[HYPOTHESIS] ? [SEP]", " {}. ".format(self.tokenizer.mask_token), "[PREMISE] [SEP]"],
-                             ["\" [HYPOTHESIS] \" ? [SEP]", " {}. ".format(self.tokenizer.mask_token), "\" [PREMISE] \" [SEP]"]]
+        self.pet_patterns = [
+            [
+                "[HYPOTHESIS] ? [SEP]",
+                f" {self.tokenizer.mask_token}, ",
+                "[PREMISE] [SEP]",
+            ],
+            [
+                "\" [HYPOTHESIS] \" ? [SEP]",
+                f" {self.tokenizer.mask_token}, ",
+                "\" [PREMISE] \" [SEP]",
+            ],
+            [
+                "[HYPOTHESIS] ? [SEP]",
+                f" {self.tokenizer.mask_token}. ",
+                "[PREMISE] [SEP]",
+            ],
+            [
+                "\" [HYPOTHESIS] \" ? [SEP]",
+                f" {self.tokenizer.mask_token}. ",
+                "\" [PREMISE] \" [SEP]",
+            ],
+        ]
 
         self.pet_pvps = list(itertools.product(self.pet_patterns, self.pet_labels))
         self._num_pets = len(self.pet_pvps)
-        self._pet_names = ["PET{}".format(i+1) for i in range(self._num_pets)]
+        self._pet_names = [f"PET{i + 1}" for i in range(self._num_pets)]
 
         self.dict_lbl_2_idx = {"entailment": 0, "not_entailment": 1}
 
@@ -65,20 +83,19 @@ class RTEReader(object):
         data = []
 
         with open(file, 'r') as f_in:
-            for line in f_in.readlines():
+            for line in f_in:
                 json_string = json.loads(line)
 
-                dict_input = {}
-                dict_input["premise"] = json_string["premise"]
-                dict_input["hypothesis"] = json_string["hypothesis"]
-                dict_input["idx"] = str(json_string["idx"])
-
-                dict_output = {}
-                if "label" in json_string:
-                    dict_output["lbl"] = self.dict_lbl_2_idx[json_string["label"]]
-                else:
-                    dict_output["lbl"] = -1
-
+                dict_input = {
+                    "premise": json_string["premise"],
+                    "hypothesis": json_string["hypothesis"],
+                    "idx": str(json_string["idx"]),
+                }
+                dict_output = {
+                    "lbl": self.dict_lbl_2_idx[json_string["label"]]
+                    if "label" in json_string
+                    else -1
+                }
                 dict_input_output = {"input": dict_input, "output": dict_output}
                 data.append(dict_input_output)
 
@@ -184,7 +201,7 @@ class RTEReader(object):
 
         pattern, label = self.pet_pvps[self._pet_names.index(mode)]
 
-        for b_idx, (h, p) in enumerate(zip(list_hypothesis, list_premise)):
+        for h, p in zip(list_hypothesis, list_premise):
             mask_idx = None
 
             for l_idx, lbl in enumerate(label):
@@ -220,8 +237,7 @@ class RTEReader(object):
 
         with open(read_file, 'r') as f_in:
             for ctr, line in enumerate(f_in.readlines()):
-                answer_dict = {}
-                answer_dict["idx"] = ctr
+                answer_dict = {"idx": ctr}
                 pred_lbl = self.list_true_lbl[ctr]
 
                 answer = reverse_dict[pred_lbl]

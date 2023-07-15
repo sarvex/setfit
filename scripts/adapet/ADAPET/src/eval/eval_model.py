@@ -21,7 +21,7 @@ def eval(config, model, batch_iter, scorer):
     '''
     model.eval()
     with torch.no_grad():
-        for idx, batch in enumerate(batch_iter):
+        for batch in batch_iter:
             pred_lbl, lbl_logits = model.predict(batch)
             list_idx = batch["input"]["idx"] if isinstance(batch["input"]["idx"], list) else batch["input"]["idx"].cpu().numpy().tolist()
             list_lbl = batch["output"]["true_lbl"] if "true_lbl" in batch["output"] else batch["output"]["lbl"]
@@ -48,11 +48,9 @@ def dev_eval(config, model, batcher, num_batches, dict_avg_val=None):
     :return: currrent dev score
     '''
 
-    dict_eval = {}
-    dict_eval["num_batches"] = num_batches
-
+    dict_eval = {"num_batches": num_batches}
     if dict_avg_val is not None:
-        dict_eval.update(dict_avg_val)
+        dict_eval |= dict_avg_val
 
     # Get train Score
     if config.eval_train:
@@ -103,11 +101,11 @@ def test_eval(config, model, batcher):
             pred_lbl, lbl_logits = model.predict(batch)
 
             #lbl_logits = lbl_logits.cpu().numpy()
-              
-            
+
+
             pred_labels.extend(pred_lbl.cpu().numpy().tolist())
             pred_logits.extend(lbl_logits.cpu().numpy().tolist())
-          
+
             list_idx = batch["input"]["idx"] if isinstance(batch["input"]["idx"], list) else batch["input"][
                 "idx"].cpu().numpy().tolist()
             list_lbl = batch["output"]["true_lbl"] if "true_lbl" in batch["output"] else batch["output"]["lbl"]
@@ -115,25 +113,22 @@ def test_eval(config, model, batcher):
             if config.dataset.lower() == 'fewglue/record':
                 list_idx = batch["input"]["qas_idx"]
                 list_lbl = batch["input"]["candidate_entity"]
-                test_writer.add_batch(list_idx, pred_lbl, list_lbl, lbl_logits.cpu().numpy())
-            else:
-                test_writer.add_batch(list_idx, pred_lbl, list_lbl, lbl_logits.cpu().numpy())
-            
+            test_writer.add_batch(list_idx, pred_lbl, list_lbl, lbl_logits.cpu().numpy())
             #added
             t2 = time.time()
             diff1 = t1-t0
             diff2 = t2-t1
             diff3 = t2-t0
-            #json_dict = {'start_loop':diff1, 'inside_loop':diff2, 'once_through':diff3}
-            #writefile = 'time_difference/'+config.exp_dir
-            #if not os.path.exists(writefile):
-            #    os.makedirs(writefile)
-            #print(writefile)
-            #writefile = writefile+'time.json'
-            #with open(writefile, "a") as f:
-            #    f.write(json.dumps(json_dict)+ '\n')
+                    #json_dict = {'start_loop':diff1, 'inside_loop':diff2, 'once_through':diff3}
+                    #writefile = 'time_difference/'+config.exp_dir
+                    #if not os.path.exists(writefile):
+                    #    os.makedirs(writefile)
+                    #print(writefile)
+                    #writefile = writefile+'time.json'
+                    #with open(writefile, "a") as f:
+                    #    f.write(json.dumps(json_dict)+ '\n')
     t3 = time.time()
-    print('total inference time: {}'.format(t3-t0))
+    print(f'total inference time: {t3 - t0}')
     #altered        
     #print(pred_logits)        
     test_writer.flush_file()

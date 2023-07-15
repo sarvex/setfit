@@ -66,7 +66,15 @@ def plot_summary_comparison(paths: List[str]) -> None:
     image_dir = Path("scripts") / "images"
     image_dir.mkdir(exist_ok=True)
     new_version = (
-        max([int(path.name[2:]) for path in image_dir.glob("v_*/") if path.name[2:].isdigit()], default=0) + 1
+        max(
+            (
+                int(path.name[2:])
+                for path in image_dir.glob("v_*/")
+                if path.name[2:].isdigit()
+            ),
+            default=0,
+        )
+        + 1
     )
     output_dir = image_dir / f"v_{new_version}"
     output_dir.mkdir()
@@ -129,9 +137,7 @@ def get_summary_df(path: str) -> None:
     sample_sizes = get_sample_sizes(path)
     header_row = ["dataset", "measure"]
     for sample_size in sample_sizes:
-        header_row.append(f"{sample_size}_avg")
-        header_row.append(f"{sample_size}_std")
-
+        header_row.extend((f"{sample_size}_avg", f"{sample_size}_std"))
     dataset_to_metric = {}
     dataset_to_df = {}
     for dataset in next(os.walk(path))[1]:

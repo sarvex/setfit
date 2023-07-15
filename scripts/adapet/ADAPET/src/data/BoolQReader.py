@@ -21,13 +21,27 @@ class BoolQReader(object):
         self.num_lbl = 2
 
         self.pet_labels = [["yes", "no"], ["true", "false"]]
-        self.pet_patterns = [["[PARAGRAPH]", " Question : [QUESTION] ? Answer : {}. [SEP]".format(self.tokenizer.mask_token), ""],
-                             ["[PARAGRAPH]", " Based on the previous passage, [QUESTION] ? {}. [SEP]".format(self.tokenizer.mask_token), ""],
-                             ["Based on the following passage, [QUESTION] ? {}. ".format(self.tokenizer.mask_token), " [PARAGRAPH] [SEP]", ""]]
+        self.pet_patterns = [
+            [
+                "[PARAGRAPH]",
+                f" Question : [QUESTION] ? Answer : {self.tokenizer.mask_token}. [SEP]",
+                "",
+            ],
+            [
+                "[PARAGRAPH]",
+                f" Based on the previous passage, [QUESTION] ? {self.tokenizer.mask_token}. [SEP]",
+                "",
+            ],
+            [
+                f"Based on the following passage, [QUESTION] ? {self.tokenizer.mask_token}. ",
+                " [PARAGRAPH] [SEP]",
+                "",
+            ],
+        ]
 
         self.pet_pvps = list(itertools.product(self.pet_patterns, self.pet_labels))
         self._num_pets = len(self.pet_pvps)
-        self._pet_names = ["PET{}".format(i+1) for i in range(self._num_pets)]
+        self._pet_names = [f"PET{i + 1}" for i in range(self._num_pets)]
 
         self.list_true_lbl = []
 
@@ -65,20 +79,19 @@ class BoolQReader(object):
         data = []
 
         with open(file, 'r') as f_in:
-            for i, line in enumerate(f_in.readlines()):
+            for line in f_in:
                 json_string = json.loads(line)
 
-                dict_input = {}
-                dict_input["question"] = json_string["question"]
-                dict_input["passage"] = json_string["passage"]
-                dict_input["idx"] = json_string["idx"]
-
-                dict_output = {}
-                if "label" in json_string:
-                    dict_output["lbl"] = self.dict_lbl_2_idx[json_string["label"]]
-                else:
-                    dict_output["lbl"] = -1
-
+                dict_input = {
+                    "question": json_string["question"],
+                    "passage": json_string["passage"],
+                    "idx": json_string["idx"],
+                }
+                dict_output = {
+                    "lbl": self.dict_lbl_2_idx[json_string["label"]]
+                    if "label" in json_string
+                    else -1
+                }
                 dict_input_output = {"input": dict_input, "output": dict_output}
                 data.append(dict_input_output)
         return data
@@ -176,14 +189,10 @@ class BoolQReader(object):
 
         with open(read_file, 'r') as f_in:
             for ctr, line in enumerate(f_in.readlines()):
-                answer_dict = {}
-                answer_dict["idx"] = ctr
+                answer_dict = {"idx": ctr}
                 pred_lbl = self.list_true_lbl[ctr]
 
-                if pred_lbl == 0:
-                    answer = "true"
-                else:
-                    answer = "false"
+                answer = "true" if pred_lbl == 0 else "false"
                 answer_dict["label"] = answer
 
                 write_file.write(json.dumps(answer_dict) + "\n")

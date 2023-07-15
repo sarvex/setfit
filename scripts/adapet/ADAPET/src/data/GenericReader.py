@@ -89,18 +89,20 @@ class GenericReader(object):
             for i, line in enumerate(f_in.readlines()):
                 json_string = json.loads(line)
 
-                dict_input = {}
-                dict_input["idx"] = i
+                dict_input = {"idx": i}
                 for j in range(1, self.text_ctr):
                     dict_input["TEXT%d" % j] = json_string["TEXT%d" % j]
 
-                dict_output = {}
                 if "LBL" not in json_string:
                     raise ValueError("LBL not in json")
 
                 if json_string["LBL"] not in self.config.dict_verbalizer:
-                    raise ValueError("Label %s not in dictionary verbalizer" % json_string["LBL"])
-                dict_output["lbl"] = list(self.config.dict_verbalizer.keys()).index(json_string["LBL"])
+                    raise ValueError(f'Label {json_string["LBL"]} not in dictionary verbalizer')
+                dict_output = {
+                    "lbl": list(self.config.dict_verbalizer.keys()).index(
+                        json_string["LBL"]
+                    )
+                }
                 dict_input_output = {"input": dict_input, "output": dict_output}
                 data.append(dict_input_output)
         return data
@@ -117,10 +119,7 @@ class GenericReader(object):
         :return:
         '''
 
-        list_list_txt = [] # [num_text, bs]
-        for i in range(1, self.text_ctr):
-            list_list_txt.append(batch["input"]["TEXT%d" % i])
-
+        list_list_txt = [batch["input"]["TEXT%d" % i] for i in range(1, self.text_ctr)]
         if self.config.max_num_lbl_tok > 1:
             return self.prepare_pet_batch_multi_token_label(batch, list_list_txt)
         else:
@@ -187,7 +186,7 @@ class GenericReader(object):
             list_input_ids.append(input_ids)
 
             max_num_lbl_tok = 0
-            for idx, lbl in enumerate(self.label):
+            for lbl in self.label:
                 num_lbl_tok = self.get_lbl_num_lbl_tok(lbl)
                 if num_lbl_tok > max_num_lbl_tok:
                     max_num_lbl_tok = num_lbl_tok
@@ -195,10 +194,7 @@ class GenericReader(object):
             for i in range(self.num_lbl):
                 list_mask_idx[b_idx, i, :max_num_lbl_tok] = range(mask_idx, mask_idx + max_num_lbl_tok)
 
-        list_label = []
-        for i in range(bs):
-            list_label.append(self.label)
-
+        list_label = [self.label for _ in range(bs)]
         return torch.tensor(list_input_ids).to(device), torch.tensor(list_mask_idx).to(device).long(), list_label
 
     def prepare_pet_mlm_batch(self, batch, mode="PET1"):
@@ -210,10 +206,7 @@ class GenericReader(object):
         :return:
         '''
 
-        list_list_txt = [] # [num_text, bs]
-        for i in range(1, self.text_ctr):
-            list_list_txt.append(batch["input"]["TEXT%d" % i])
-
+        list_list_txt = [batch["input"]["TEXT%d" % i] for i in range(1, self.text_ctr)]
         bs = len(batch["input"]["TEXT1"])
 
         prep_lbl = np.random.randint(self.num_lbl, size=bs)
@@ -250,12 +243,11 @@ class GenericReader(object):
 
         read_file = self._get_file("test")
 
-        reverse_dict = {idx: lbl for idx, lbl in enumerate(self.config.dict_verbalizer.keys())}
+        reverse_dict = dict(enumerate(self.config.dict_verbalizer.keys()))
 
         with open(read_file, 'r') as f_in:
             for ctr, line in enumerate(f_in.readlines()):
-                answer_dict = {}
-                answer_dict["idx"] = ctr
+                answer_dict = {"idx": ctr}
                 pred_lbl = self.list_true_lbl[ctr]
 
                 answer = reverse_dict[pred_lbl]

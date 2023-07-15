@@ -121,9 +121,7 @@ def create_summary_table(results_path: str) -> None:
     sample_sizes = get_sample_sizes(unzipped_path)
     header_row = ["dataset", "measure"]
     for sample_size in sample_sizes:
-        header_row.append(f"{sample_size}_avg")
-        header_row.append(f"{sample_size}_std")
-
+        header_row.extend((f"{sample_size}_avg", f"{sample_size}_std"))
     csv_lines = [header_row]
 
     means, stds = defaultdict(list), defaultdict(list)

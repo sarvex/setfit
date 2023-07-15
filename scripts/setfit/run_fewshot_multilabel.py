@@ -58,9 +58,7 @@ def parse_args():
     parser.add_argument("--is_dev_set", type=bool, default=False)
     parser.add_argument("--is_test_set", type=bool, default=False)
     parser.add_argument("--override_results", default=False, action="store_true")
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 class RunFewShot:

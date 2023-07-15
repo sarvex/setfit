@@ -76,7 +76,7 @@ def print_mem_usage(loc):
 
 class ParseKwargs(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, dict())
+        setattr(namespace, self.dest, {})
         for value in values:
             key, value = value.split('=')
             getattr(namespace, self.dest)[key] = value
@@ -106,9 +106,9 @@ def get_avg_dict_val_store(dict_val_store, num_batches=100):
     :param eval_every:
     :return:
     '''
-    dict_avg_val = {}
-
-    for k in dict_val_store.keys():
-        dict_avg_val[k] = float('%.3f' % (dict_val_store[k].detach().cpu().item() / num_batches))
-
-    return dict_avg_val
+    return {
+        k: float(
+            '%.3f' % (dict_val_store[k].detach().cpu().item() / num_batches)
+        )
+        for k in dict_val_store.keys()
+    }

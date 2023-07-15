@@ -55,8 +55,7 @@ def _get_default_logging_level():
     If TRANSFORMERS_VERBOSITY env var is set to one of the valid choices return that as the new default level. If it is
     not - fall back to `_default_log_level`
     """
-    env_level_str = os.getenv("TRANSFORMERS_VERBOSITY", None)
-    if env_level_str:
+    if env_level_str := os.getenv("TRANSFORMERS_VERBOSITY", None):
         if env_level_str in log_levels:
             return log_levels[env_level_str]
         else:
@@ -272,8 +271,9 @@ def warning_advice(self, *args, **kwargs):
     This method is identical to `logger.warning()`, but if env var TRANSFORMERS_NO_ADVISORY_WARNINGS=1 is set, this
     warning will not be printed
     """
-    no_advisory_warnings = os.getenv("TRANSFORMERS_NO_ADVISORY_WARNINGS", False)
-    if no_advisory_warnings:
+    if no_advisory_warnings := os.getenv(
+        "TRANSFORMERS_NO_ADVISORY_WARNINGS", False
+    ):
         return
     self.warning(*args, **kwargs)
 

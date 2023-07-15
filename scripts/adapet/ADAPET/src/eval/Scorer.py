@@ -74,29 +74,24 @@ class Scorer(object):
         acc_cor_cnt = 0
         acc_ttl_cnt = 0
 
-        if self.is_multirc:
-            for (idx, pred_true_lbl) in self.dict_idx2logits_lbl.items():
-
-                exact_match = True
-                for (pred_lbl, true_lbl, _) in pred_true_lbl:
-                    if pred_lbl != true_lbl:
-                        exact_match = False
+        for idx, pred_true_lbl in self.dict_idx2logits_lbl.items():
+            if self.is_multirc:
+                exact_match = all(
+                    pred_lbl == true_lbl for pred_lbl, true_lbl, _ in pred_true_lbl
+                )
                 if exact_match:
                     acc_cor_cnt += 1
 
-                acc_ttl_cnt += 1
-
-        else:
-            for (idx, pred_true_lbl) in self.dict_idx2logits_lbl.items():
+            else:
                 pred_lbl = pred_true_lbl[0][0]
                 true_lbl = pred_true_lbl[0][1]
 
-                acc_ttl_cnt += 1
                 if pred_lbl == true_lbl:
                     acc_cor_cnt += 1
 
-        round_tot_acc = float(round(acc_cor_cnt / acc_ttl_cnt, 3))
-        return round_tot_acc
+            acc_ttl_cnt += 1
+
+        return float(round(acc_cor_cnt / acc_ttl_cnt, 3))
 
     def normalize_answer(self, s):
         """Lower text and remove punctuation, articles and extra whitespace.
@@ -130,25 +125,20 @@ class Scorer(object):
             return 0
         precision = 1.0 * num_same / len(prediction_tokens)
         recall = 1.0 * num_same / len(ground_truth_tokens)
-        f1 = (2 * precision * recall) / (precision + recall)
-        return f1
+        return (2 * precision * recall) / (precision + recall)
 
     def _compute_f1(self):
 
-        if self.is_multirc:
-            f1_pred_lbl = []
-            f1_true_lbl = []
+        f1_pred_lbl = []
+        f1_true_lbl = []
 
-            for (idx, pred_true_lbl) in self.dict_idx2logits_lbl.items():
+        for idx, pred_true_lbl in self.dict_idx2logits_lbl.items():
+            if self.is_multirc:
                 for (pred_lbl, true_lbl, _) in pred_true_lbl:
                     f1_pred_lbl.append(pred_lbl)
                     f1_true_lbl.append(true_lbl)
 
-        else:
-            f1_pred_lbl = []
-            f1_true_lbl = []
-
-            for (idx, pred_true_lbl) in self.dict_idx2logits_lbl.items():
+            else:
                 f1_pred_lbl.append(pred_true_lbl[0][0])
                 f1_true_lbl.append(pred_true_lbl[0][1])
 
@@ -172,7 +162,7 @@ class Scorer(object):
             mac_avg_f1 = round(mac_avg_f1, 4)
             mean_avg_pre = round(mean_avg_pre, 4)                
 
-        return "f1_mic {} f1_mac {} avg_pre {}".format(mic_avg_f1, mac_avg_f1, mean_avg_pre)
+        return f"f1_mic {mic_avg_f1} f1_mac {mac_avg_f1} avg_pre {mean_avg_pre}"
 
         #return round(avg_f1, 3)
 
@@ -216,12 +206,12 @@ class Scorer(object):
 
         if self.compute_acc:
             round_tot_acc = self._compute_acc()
-            type = "%s_acc" % split
+            type = f"{split}_acc"
             dict_scores[type] = round_tot_acc
             score_eval = round_tot_acc
         if self.compute_f1:
             avg_f1 = self._compute_f1()
-            type = "%s_f1" % split
+            type = f"{split}_f1"
             dict_scores[type] = avg_f1
             score_eval = avg_f1
 

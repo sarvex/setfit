@@ -125,13 +125,12 @@ class SetFitTrainer:
         self.samples_per_label = samples_per_label
 
         if model is None:
-            if model_init is not None:
-                model = self.call_model_init()
-            else:
+            if model_init is None:
                 raise RuntimeError("`SetFitTrainer` requires either a `model` or `model_init` argument")
-        else:
-            if model_init is not None:
-                raise RuntimeError("`SetFitTrainer` requires either a `model` or `model_init` argument, but not both")
+            else:
+                model = self.call_model_init()
+        elif model_init is not None:
+            raise RuntimeError("`SetFitTrainer` requires either a `model` or `model_init` argument, but not both")
 
         self.model = model
         self.hp_search_backend = None
@@ -162,8 +161,9 @@ class SetFitTrainer:
                     "Either make sure these columns are present, or specify which columns to use with column_mapping in SetFitTrainer."
                 )
         if self.column_mapping is not None:
-            missing_columns = required_columns.difference(self.column_mapping.values())
-            if missing_columns:
+            if missing_columns := required_columns.difference(
+                self.column_mapping.values()
+            ):
                 raise ValueError(
                     f"The following columns are missing from the column mapping: {missing_columns}. Please provide a mapping for all required columns."
                 )
@@ -500,8 +500,8 @@ class SetFitTrainer:
         """
         if backend is None:
             backend = default_hp_search_backend()
-            if backend is None:
-                raise RuntimeError("optuna should be installed. " "To install optuna run `pip install optuna`. ")
+        if backend is None:
+            raise RuntimeError("optuna should be installed. " "To install optuna run `pip install optuna`. ")
         backend = HPSearchBackend(backend)
         if backend == HPSearchBackend.OPTUNA and not is_optuna_available():
             raise RuntimeError("You picked the optuna backend, but it is not installed. Use `pip install optuna`.")
