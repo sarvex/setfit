@@ -30,34 +30,28 @@ def write_seed_output(pretrained_weight, task_name, sample_size, ds_seed, metric
     dataset = task_name[7:] #remove setfit/
     if dataset in ["toxic_conversations"]:
         json_dict = {"measure": "ap", "score": metric}
-    
+
     elif dataset in ["amazon_counterfactual_en"]:
         json_dict = {"measure": "matthews_correlation", "score": metric}
-    
-    elif 'SetFit/' + dataset in AMZ_MULTI_LING:
+
+    elif f'SetFit/{dataset}' in AMZ_MULTI_LING:
         json_dict = {"measure": "mean_absolute_error", "score": metric}        
-    
+
     else:
         json_dict = {"measure": "acc", "score": metric}
-    
+
     if 'microsoft/' in pretrained_weight:
         pretrained_weight = pretrained_weight.replace('microsoft/', '')
-    
+
     if task_name in SINGLE_SENT_DATASETS:
-        writefile = 'seed_output/' + pretrained_weight +'/'+ dataset +'/'+ 'train-'+str(sample_size)+'-'+str(ds_seed)+ '/'
+        writefile = f'seed_output/{pretrained_weight}/{dataset}/train-{str(sample_size)}-{str(ds_seed)}/'
     else:
-        if english:
-            lang = 'eng'
-        else:
-            lang = 'lang'
-        if prompt:
-            prompting = 'prompt'
-        else:
-            prompting = 'no-prompt'
-        writefile = 'seed_output/' + pretrained_weight + "__"+lang+'_'+prompting +'/'+ dataset +'/'+ 'train-'+str(sample_size)+'-'+str(ds_seed)+ '/'
+        lang = 'eng' if english else 'lang'
+        prompting = 'prompt' if prompt else 'no-prompt'
+        writefile = f'seed_output/{pretrained_weight}__{lang}_{prompting}/{dataset}/train-{str(sample_size)}-{str(ds_seed)}/'
     if not os.path.exists(writefile):
         os.makedirs(writefile)
-    writefile = writefile+'results.json'
+    writefile = f'{writefile}results.json'
     with open(writefile, "a") as f:
         f.write(json.dumps(json_dict))
 
@@ -79,68 +73,61 @@ def fix_intent(task_name, dataset, english):
     dataset = dataset.rename_column("label_text", "str_label_text")
     if english:
         for split, dset in dataset.items():
-            label_text = []
-            for txt_lab in dset["str_label_text"]:
-                label_text.append(txt_lab.replace("_", " "))
+            label_text = [txt_lab.replace("_", " ") for txt_lab in dset["str_label_text"]]
             dset = dset.add_column('label_text', label_text)
             dataset[split] = dset
-        
-        lang_pattern = '[TEXT1] this is [LBL]'        
-    else:
-        if task_name == 'SetFit/amazon_massive_intent_zh-CN':
-            lang_pattern = '[TEXT1] 这是 [LBL]'
-            dataset = dataset.rename_column("label_text_ch", "label_text")
-        
-        elif task_name == 'SetFit/amazon_massive_intent_ru-RU':
-            lang_pattern = '[TEXT1] это [LBL]'
-            dataset = dataset.rename_column("label_text_ru", "label_text")
-        
-        elif task_name == 'SetFit/amazon_massive_intent_de-DE':
-            lang_pattern = '[TEXT1] dies ist [LBL]'
-            dataset = dataset.rename_column("label_text_de", "label_text")        
-        
-        elif task_name == 'SetFit/amazon_massive_intent_ja-JP':
-            lang_pattern = '[TEXT1]これは[LBL]だ'
-            dataset = dataset.rename_column("label_text_jp", "label_text")
-        
-        elif task_name == 'SetFit/amazon_massive_intent_es-ES':
-            lang_pattern = '[TEXT1] esto es [LBL]'
-            dataset = dataset.rename_column("label_text_es", "label_text")
-        
+
+        lang_pattern = '[TEXT1] this is [LBL]'
+    elif task_name == 'SetFit/amazon_massive_intent_zh-CN':
+        lang_pattern = '[TEXT1] 这是 [LBL]'
+        dataset = dataset.rename_column("label_text_ch", "label_text")
+
+    elif task_name == 'SetFit/amazon_massive_intent_ru-RU':
+        lang_pattern = '[TEXT1] это [LBL]'
+        dataset = dataset.rename_column("label_text_ru", "label_text")
+
+    elif task_name == 'SetFit/amazon_massive_intent_de-DE':
+        lang_pattern = '[TEXT1] dies ist [LBL]'
+        dataset = dataset.rename_column("label_text_de", "label_text")        
+
+    elif task_name == 'SetFit/amazon_massive_intent_ja-JP':
+        lang_pattern = '[TEXT1]これは[LBL]だ'
+        dataset = dataset.rename_column("label_text_jp", "label_text")
+
+    elif task_name == 'SetFit/amazon_massive_intent_es-ES':
+        lang_pattern = '[TEXT1] esto es [LBL]'
+        dataset = dataset.rename_column("label_text_es", "label_text")
+
     return dataset, lang_pattern
 
 def multiling_verb_pattern(task_name, english, prompt):
     assert task_name in AMZ_MULTI_LING
-    if not english:
-        if task_name == 'SetFit/amazon_reviews_multi_zh':
-            lang_star_dict = {0: '1星', 1: '2星', 2: '3星', 3: '4星', 4: '5星'}
-            lang_pattern = '[TEXT1] 这是 [LBL]'
-        
-        elif task_name == 'SetFit/amazon_reviews_multi_de':
-            lang_star_dict = {0: '1 stern', 1: '2 sterne', 2: '3 sterne', 3: '4 sterne', 4: '5 sterne'}
-            lang_pattern = '[TEXT1] dies ist [LBL]'
-        
-        elif task_name == 'SetFit/amazon_reviews_multi_fr':
-            lang_star_dict = {0: '1 étoile', 1: '2 étoiles', 2: '3 étoiles', 3: '4 étoiles', 4: '5 étoiles'}
-            lang_pattern = '[TEXT1] est noté [LBL]'
-        
-        elif task_name == 'SetFit/amazon_reviews_multi_ja':
-            lang_star_dict = {0: '一つ星', 1: '二つ星', 2: '三つ星', 3: '四つ星', 4: '五つ星'}
-            lang_pattern = '[TEXT1]これは[LBL]だ'
-        
-        elif task_name == 'SetFit/amazon_reviews_multi_es':
-            lang_star_dict = {0: '1 estrella', 1: '2 estrellas', 2: '3 estrellas', 3: '4 estrellas', 4: '5 estrellas'}
-            lang_pattern = '[TEXT1] esto es [LBL]'
-    else:
+    if english:
         lang_star_dict = {0: '1 star', 1: '2 stars', 2: '3 stars', 3: '4 stars', 4: '5 stars'}
         lang_pattern = '[TEXT1] this is [LBL]'
-    
-    if prompt:
-        return lang_star_dict, lang_pattern
-    
-    else:
+
+    elif task_name == 'SetFit/amazon_reviews_multi_de':
+        lang_star_dict = {0: '1 stern', 1: '2 sterne', 2: '3 sterne', 3: '4 sterne', 4: '5 sterne'}
+        lang_pattern = '[TEXT1] dies ist [LBL]'
+
+    elif task_name == 'SetFit/amazon_reviews_multi_es':
+        lang_star_dict = {0: '1 estrella', 1: '2 estrellas', 2: '3 estrellas', 3: '4 estrellas', 4: '5 estrellas'}
+        lang_pattern = '[TEXT1] esto es [LBL]'
+    elif task_name == 'SetFit/amazon_reviews_multi_fr':
+        lang_star_dict = {0: '1 étoile', 1: '2 étoiles', 2: '3 étoiles', 3: '4 étoiles', 4: '5 étoiles'}
+        lang_pattern = '[TEXT1] est noté [LBL]'
+
+    elif task_name == 'SetFit/amazon_reviews_multi_ja':
+        lang_star_dict = {0: '一つ星', 1: '二つ星', 2: '三つ星', 3: '四つ星', 4: '五つ星'}
+        lang_pattern = '[TEXT1]これは[LBL]だ'
+
+    elif task_name == 'SetFit/amazon_reviews_multi_zh':
+        lang_star_dict = {0: '1星', 1: '2星', 2: '3星', 3: '4星', 4: '5星'}
+        lang_pattern = '[TEXT1] 这是 [LBL]'
+
+    if not prompt:
         lang_pattern = '[TEXT1] [LBL]'
-        return lang_star_dict, lang_pattern
+    return lang_star_dict, lang_pattern
 
 def fix_stsb(dataset):
     dataset = dataset.rename_column("label", "float_label")
@@ -149,12 +136,11 @@ def fix_stsb(dataset):
     for split, dset in dataset.items():
         if split == 'test':
             continue
-        else:
-            label = [round(i) for i in dset['float_label']]
-            dset = dset.add_column("label", label)
-            label_text = [sim_dict[i] for i in label]
-            dset = dset.add_column('label_text', label_text)
-            dataset[split] = dset
+        label = [round(i) for i in dset['float_label']]
+        dset = dset.add_column("label", label)
+        label_text = [sim_dict[i] for i in label]
+        dset = dset.add_column('label_text', label_text)
+        dataset[split] = dset
     return dataset
 
 
@@ -163,7 +149,7 @@ def write_evaluation_json(accs, mics, macs, avg_pres, logit_aps, num_labs, sampl
         assert len(accs) == len(mics) == len(macs) == len(avg_pres) == len(logit_aps) == len(ADAPET_SEEDS)
     else:
         assert len(accs) == len(mics) == len(macs) == len(avg_pres) == len(logit_aps) == len(SEEDS)
-    
+
     round_to = 10
     mean_acc = round(np.mean(accs), round_to)
     acc_std = round(np.std(accs), round_to)
@@ -173,13 +159,13 @@ def write_evaluation_json(accs, mics, macs, avg_pres, logit_aps, num_labs, sampl
 
     mean_macro = round(np.mean(macs), round_to)
     macro_std = round(np.std(macs), round_to)
-    
+
     mean_avg_pre = round(np.mean(avg_pres), round_to)
     avg_pre_std = round(np.std(avg_pres), round_to)
-    
+
     mean_logit_ap = round(np.mean(logit_aps), round_to)
     logit_ap_std = round(np.std(logit_aps), round_to)
-    
+
     #in the multiclass scenario, average precision is not defined
     if num_labs > 2:
         mean_avg_pre = 'NA'
@@ -200,19 +186,12 @@ def write_evaluation_json(accs, mics, macs, avg_pres, logit_aps, num_labs, sampl
         "logit_ap_std": logit_ap_std,
     }
     write_dir = 'results/'+ configs["pretrained_weight"] + '/' + task_name.lower()[7:]
-    
-    if english:
-        write_dir = write_dir + '_eng'
-    else:
-        write_dir = write_dir + '_lang'
-    if prompt:
-        write_dir = write_dir + '_prompt'
-    else:
-        write_dir = write_dir + '_no_prompt'
 
+    write_dir = f'{write_dir}_eng' if english else f'{write_dir}_lang'
+    write_dir = f'{write_dir}_prompt' if prompt else f'{write_dir}_no_prompt'
     if not os.path.exists(write_dir):
         os.makedirs(write_dir)
-    writefile = write_dir + "/" + str(sample_size) + "_split_results.json"
+    writefile = f"{write_dir}/{str(sample_size)}_split_results.json"
     with open(writefile, "w") as f:
         f.write(json.dumps(json_dict) + "\n")
 

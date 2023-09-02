@@ -139,13 +139,11 @@ class SetFitModelDifferentiableHeadTest(TestCase):
 
     @staticmethod
     def _build_model(num_classes: int) -> SetFitModel:
-        model = SetFitModel.from_pretrained(
+        return SetFitModel.from_pretrained(
             "sentence-transformers/paraphrase-albert-small-v2",
             use_differentiable_head=True,
             head_params={"out_features": num_classes},
         )
-
-        return model
 
     def test_setfit_body_and_head_on_same_device(self):
         model = self._build_model(num_classes=1)

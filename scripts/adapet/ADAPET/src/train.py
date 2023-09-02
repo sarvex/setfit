@@ -67,12 +67,24 @@ def train(config):
     # Ignore weight decay for certain parameters
     no_decay_param = ['bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
-        {'params': [p for n, p in model.model.named_parameters() if not any(nd in n for nd in no_decay_param)],
-         'weight_decay': config.weight_decay,
-         'lr': config.lr},
-        {'params': [p for n, p in model.model.named_parameters() if any(nd in n for nd in no_decay_param)],
-         'weight_decay': 0.0,
-         'lr': config.lr},
+        {
+            'params': [
+                p
+                for n, p in model.model.named_parameters()
+                if all(nd not in n for nd in no_decay_param)
+            ],
+            'weight_decay': config.weight_decay,
+            'lr': config.lr,
+        },
+        {
+            'params': [
+                p
+                for n, p in model.model.named_parameters()
+                if any(nd in n for nd in no_decay_param)
+            ],
+            'weight_decay': 0.0,
+            'lr': config.lr,
+        },
     ]
     optimizer = torch.optim.AdamW(optimizer_grouped_parameters, eps=1e-8)
 
@@ -118,7 +130,7 @@ def train(config):
                 dev_acc = float(f1s[0])
 
             print("Global Step: %d Acc: %.3f" % (batch_idx, float(dev_acc)) + '\n')
-            
+
             if dev_acc > best_dev_acc:
                 best_dev_acc = dev_acc
                 torch.save(model.state_dict(), os.path.join(config.exp_dir, "best_model.pt"))

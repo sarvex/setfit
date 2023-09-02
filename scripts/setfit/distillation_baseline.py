@@ -62,7 +62,7 @@ class BaselineDistillation:
         for i in range(num_classes):
             a = [0] * num_classes
             a[i] = 1
-            value2hot.update({i: a})
+            value2hot[i] = a
 
         test_dict = {"text": x_test, "score": [value2hot[i] for i in y_test]}
         raw_test_ds = Dataset.from_dict(test_dict)

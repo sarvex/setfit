@@ -27,10 +27,10 @@ EXTRAS_REQUIRE = {
 
 
 def combine_requirements(base_keys):
-    return list(set(k for v in base_keys for k in EXTRAS_REQUIRE[v]))
+    return list({k for v in base_keys for k in EXTRAS_REQUIRE[v]})
 
 
-EXTRAS_REQUIRE["dev"] = combine_requirements([k for k in EXTRAS_REQUIRE])
+EXTRAS_REQUIRE["dev"] = combine_requirements(list(EXTRAS_REQUIRE))
 # For the combatibility tests we add pandas<2, as pandas 2.0.0 onwards is incompatible with old datasets versions,
 # and we assume few to no users would use old datasets versions with new pandas versions.
 # The only alternative is incrementing the minimum version for datasets, which seems unnecessary.

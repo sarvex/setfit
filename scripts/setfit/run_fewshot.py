@@ -60,9 +60,7 @@ def parse_args():
     parser.add_argument("--keep_body_frozen", default=False, action="store_true")
     parser.add_argument("--add_data_augmentation", default=False)
 
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def create_results_path(dataset: str, split_name: str, output_path: str) -> LiteralString:

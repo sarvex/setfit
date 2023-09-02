@@ -64,12 +64,11 @@ def jsonl_from_dataset(dataset, task_name, updated_args, split="train"):
     writefile = data_dir + "/" + split + ".jsonl"
     try:
         os.remove(writefile)
-        print("removing old {} file".format(split))
+        print(f"removing old {split} file")
 
     except OSError:
-        print("no old {} files found".format(split))
-        pass
-    print("writing new {} file".format(split))
+        print(f"no old {split} files found")
+    print(f"writing new {split} file")
     with open(writefile, "a") as f:
         if task_name in GLUE_DATASETS:
             for idx, txt1 in enumerate(text1):
@@ -87,18 +86,18 @@ def jsonl_from_dataset(dataset, task_name, updated_args, split="train"):
                 lab = label[idx]
                 json_dict = {"TEXT1": txt, "LBL": str(lab)}
                 f.write(json.dumps(json_dict) + "\n")
-    print("{} split written".format(split))
+    print(f"{split} split written")
 
 
 def create_verbalizer(dataset):
     """creates verbalizer mapping from label to text label"""
-    verbalizer = dict()
+    verbalizer = {}
     label_text = dataset["label_text"]
     label = dataset["label"]
     for idx, lab in enumerate(label):
         if str(lab) not in verbalizer:
             verbalizer[str(lab)] = label_text[idx]
-    
+
     return verbalizer
 
 def get_max_num_lbl_tok(task_name, train_ds, pretrained_weight, lang_star_dict=None):
@@ -119,34 +118,31 @@ def get_max_num_lbl_tok(task_name, train_ds, pretrained_weight, lang_star_dict=N
 
 def make_pattern(task_name, parser, english, prompt, lang_pattern):
     if task_name in GLUE_DATASETS:
-        if task_name == 'SetFit/stsb':
-            pattern = "[TEXT1] and [TEXT2] are [LBL]"
-        
-        else:
-            pattern = "[TEXT1] and [TEXT2] imply [LBL]"
-    
+        return (
+            "[TEXT1] and [TEXT2] are [LBL]"
+            if task_name == 'SetFit/stsb'
+            else "[TEXT1] and [TEXT2] imply [LBL]"
+        )
     elif task_name in AMZ_MULTI_LING: 
-        pattern = lang_pattern
-    
+        return lang_pattern
+
     else:
-        pattern = "[TEXT1] this is [LBL]"
-    
-    return pattern
+        return "[TEXT1] this is [LBL]"
 
 def update_parser(task_name, parser, max_tokens, verbalizer, lang_pattern):
     
-    data_dir = "data/{}".format(task_name)
+    data_dir = f"data/{task_name}"
     args = parser.parse_args()
     english= args.english
     prompt = args.prompt
     pattern = make_pattern(task_name, parser, english, prompt, lang_pattern)
-    
-    
+
+
     args.data_dir = data_dir
     args.pattern = pattern
     args.dict_verbalizer = json.dumps(verbalizer, ensure_ascii=False)
     args.max_num_lbl_tok = int(max_tokens)
-    
+
     return args
 
 def write_generic_json(task_name, lang_pattern, verbalizer, updated_args, write_config="config/Generic.json"):    
@@ -154,13 +150,13 @@ def write_generic_json(task_name, lang_pattern, verbalizer, updated_args, write_
     verbalizer = updated_args.dict_verbalizer
     max_tokens = updated_args.max_num_lbl_tok
     data_dir = updated_args.data_dir
-        
+
     adapet_seed = updated_args.seed
     pattern = updated_args.pattern
     pretrained_weight = updated_args.pretrained_weight
-    
-    print('this is the pattern: {}'.format(pattern))
-    print('this is the verbalizer: {}'.format(verbalizer))
+
+    print(f'this is the pattern: {pattern}')
+    print(f'this is the verbalizer: {verbalizer}')
     configs = {
         "pretrained_weight": pretrained_weight,
         "dataset": "generic",
@@ -185,7 +181,7 @@ def write_generic_json(task_name, lang_pattern, verbalizer, updated_args, write_
     }
     if configs['num_batches'] != configs['eval_every']:
         raise ValueError("The number of batches and eval_every must be the same value to avoid checkpointing on test set")
-        
+
     generic_json = json.dumps(configs, ensure_ascii=False)
     if not os.path.exists("config"):
         os.makedirs("config")
@@ -194,7 +190,6 @@ def write_generic_json(task_name, lang_pattern, verbalizer, updated_args, write_
         print("old config file deleted")
     except OSError:
         print("no config file found... writing new file")
-        pass
     with open(write_config, "w") as f:
         f.write(generic_json)
     print("Generic json file written")
@@ -231,13 +226,13 @@ def multilingual_en(exp_dir, updated_args, pretrained_weight, sample_size, ds_se
 def main(parser):
     args = parser.parse_args()
     english = args.english
-    prompt = args.prompt  
+    prompt = args.prompt
     task_name = args.task_name
     pretrained_weight = args.pretrained_weight
     adapet_seed = args.seed
     multilingual = args.multilingual
-    print("starting work on {}".format(task_name))        
-    
+    print(f"starting work on {task_name}")        
+
     if task_name in AMZ_MULTI_LING:
         print('loading multilingual dataset')
         dataset = load_dataset(task_name)
@@ -253,14 +248,14 @@ def main(parser):
             train_ds = fix_train_amzn(train_ds, lang_star_dict)
         else:
             train_ds = dataset['train']
-        
+
         test_ds = dataset['test']
-    
+
     else:
         print('loading single sentence dataset')      
         train_ds = load_dataset(task_name, split="train")
         test_ds = load_dataset(task_name, split="test")  
-    
+
     #determine the maximum number of tokens in the label text
     if task_name in AMZ_MULTI_LING:
         max_tokens = get_max_num_lbl_tok(task_name, train_ds, pretrained_weight, lang_star_dict)
@@ -268,26 +263,26 @@ def main(parser):
         max_tokens = get_max_num_lbl_tok(task_name, train_ds, pretrained_weight, lang_star_dict=None)
 
     num_labs = len(set(train_ds["label"]))
-    
+
     if task_name not in AMZ_MULTI_LING:
         lang_pattern = None
-    
+
     for sample_size in SAMPLE_SIZES:
-        print("begun work on {} sample size : {}".format(task_name, sample_size))
+        print(f"begun work on {task_name} sample size : {sample_size}")
         fewshot_ds = create_fewshot_splits(sample_size, train_ds)
         for ds_seed, ds in enumerate(fewshot_ds):                  
             current_split_ds = fewshot_ds[ds]                
-        
+
             updated_args = json_file_setup(task_name, current_split_ds, lang_pattern, max_tokens, parser)
 
             # call ADAPET
             exp_dir = call_adapet(updated_args)
-            
+
             #rewrite the existing "test" dataset with the true test data 
             jsonl_from_dataset(test_ds, task_name, updated_args, "test")
-            
+
             pred_labels, pred_logits = do_test(exp_dir)
-            
+
             y_true = test_ds["label"]
 
             if task_name in ['SetFit/toxic_conversations']:
@@ -295,24 +290,24 @@ def main(parser):
                     y_pred = pred_logits[:, 1]
                     logit_ap = average_precision_score(y_true, y_pred)*100
                     write_seed_output(pretrained_weight, task_name, sample_size, ds_seed, logit_ap, english, prompt)
-            
+
             elif task_name in ['SetFit/amazon_counterfactual_en']:
                 mcc = matthews_corrcoef(y_true, pred_labels)*100
                 write_seed_output(pretrained_weight, task_name, sample_size, ds_seed, mcc, english, prompt)
-            
+
             elif task_name in AMZ_MULTI_LING and multilingual in ['each', 'all']:
                 mae = mean_absolute_error(y_true, pred_labels)*100
                 write_seed_output(pretrained_weight+'_'+multilingual, task_name, sample_size, ds_seed, mae, english, prompt)
-            
+
             elif task_name == 'SetFit/amazon_reviews_multi_en' and multilingual == 'en':
                 multilingual_en(exp_dir, updated_args, pretrained_weight, sample_size, ds_seed)
-            
+
             else:
                 acc = accuracy_score(y_true, pred_labels)*100
                 write_seed_output(pretrained_weight, task_name, sample_size, ds_seed, acc, english, prompt)
-                    
-        print("no more work on {} sample size : {}".format(task_name, sample_size))
-    print("finished work on {}".format(task_name))
+
+        print(f"no more work on {task_name} sample size : {sample_size}")
+    print(f"finished work on {task_name}")
     print()
 
 

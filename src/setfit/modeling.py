@@ -248,7 +248,7 @@ class SetFitHead(models.Dense):
                 torch.nn.init.constant_(module.bias, 1e-2)
 
     def __repr__(self):
-        return "SetFitHead({})".format(self.get_config_dict())
+        return f"SetFitHead({self.get_config_dict()})"
 
 
 @dataclass
@@ -298,7 +298,7 @@ class SetFitModel(PyTorchModelHubMixin):
             criterion = self.model_head.get_loss_fn()
             optimizer = self._prepare_optimizer(learning_rate, body_learning_rate, l2_weight)
             scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
-            for epoch_idx in trange(num_epochs, desc="Epoch", disable=not show_progress_bar):
+            for _ in trange(num_epochs, desc="Epoch", disable=not show_progress_bar):
                 for batch in dataloader:
                     features, labels = batch
                     optimizer.zero_grad()
@@ -352,15 +352,13 @@ class SetFitModel(PyTorchModelHubMixin):
             tokenizer=self.model_body.tokenizer,
             max_length=max_length,
         )
-        dataloader = DataLoader(
+        return DataLoader(
             dataset,
             batch_size=batch_size,
             collate_fn=dataset.collate_fn,
             shuffle=shuffle,
             pin_memory=True,
         )
-
-        return dataloader
 
     def _prepare_optimizer(
         self,
@@ -370,7 +368,7 @@ class SetFitModel(PyTorchModelHubMixin):
     ) -> torch.optim.Optimizer:
         body_learning_rate = body_learning_rate or learning_rate
         l2_weight = l2_weight or self.l2_weight
-        optimizer = torch.optim.AdamW(
+        return torch.optim.AdamW(
             [
                 {
                     "params": self.model_body.parameters(),
@@ -384,8 +382,6 @@ class SetFitModel(PyTorchModelHubMixin):
                 },
             ],
         )
-
-        return optimizer
 
     def freeze(self, component: Optional[Literal["body", "head"]] = None) -> None:
         if component is None or component == "body":
@@ -552,13 +548,12 @@ class SetFitModel(PyTorchModelHubMixin):
             if use_differentiable_head:
                 if multi_target_strategy is None:
                     use_multitarget = False
+                elif multi_target_strategy in ["one-vs-rest", "multi-output"]:
+                    use_multitarget = True
                 else:
-                    if multi_target_strategy in ["one-vs-rest", "multi-output"]:
-                        use_multitarget = True
-                    else:
-                        raise ValueError(
-                            f"multi_target_strategy '{multi_target_strategy}' is not supported for differentiable head"
-                        )
+                    raise ValueError(
+                        f"multi_target_strategy '{multi_target_strategy}' is not supported for differentiable head"
+                    )
                 # Base `model_head` parameters
                 # - get the sentence embedding dimension from the `model_body`
                 # - follow the `model_body`, put `model_head` on the target device
@@ -657,7 +652,7 @@ class SupConLoss(nn.Module):
             anchor_feature = contrast_feature
             anchor_count = contrast_count
         else:
-            raise ValueError("Unknown mode: {}".format(self.contrast_mode))
+            raise ValueError(f"Unknown mode: {self.contrast_mode}")
 
         # Compute logits
         anchor_dot_contrast = torch.div(torch.matmul(anchor_feature, contrast_feature.T), self.temperature)
@@ -724,20 +719,19 @@ def sentence_pairs_generation_multilabel(sentences, labels, pairs):
         sample_labels = np.where(labels[first_idx, :] == 1)[0]
         if len(np.where(labels.dot(labels[first_idx, :].T) == 0)[0]) == 0:
             continue
-        else:
-            for _label in sample_labels:
-                second_idx = np.random.choice(np.where(labels[:, _label] == 1)[0])
-                positive_sentence = sentences[second_idx]
-                # Prepare a positive pair and update the sentences and labels
-                # lists, respectively
-                pairs.append(InputExample(texts=[current_sentence, positive_sentence], label=1.0))
+        for _label in sample_labels:
+            second_idx = np.random.choice(np.where(labels[:, _label] == 1)[0])
+            positive_sentence = sentences[second_idx]
+            # Prepare a positive pair and update the sentences and labels
+            # lists, respectively
+            pairs.append(InputExample(texts=[current_sentence, positive_sentence], label=1.0))
 
-            # Search for sample that don't have a label in common with current
-            # sentence
-            negative_idx = np.where(labels.dot(labels[first_idx, :].T) == 0)[0]
-            negative_sentence = sentences[np.random.choice(negative_idx)]
-            # Prepare a negative pair of sentences and update our lists
-            pairs.append(InputExample(texts=[current_sentence, negative_sentence], label=0.0))
+        # Search for sample that don't have a label in common with current
+        # sentence
+        negative_idx = np.where(labels.dot(labels[first_idx, :].T) == 0)[0]
+        negative_sentence = sentences[np.random.choice(negative_idx)]
+        # Prepare a negative pair of sentences and update our lists
+        pairs.append(InputExample(texts=[current_sentence, negative_sentence], label=0.0))
     # Return a 2-tuple of our sentence pairs and labels
     return pairs
 

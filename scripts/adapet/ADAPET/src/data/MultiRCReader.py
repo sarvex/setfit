@@ -25,12 +25,26 @@ class MultiRCReader(object):
         self.list_lbl = []
 
         self.pet_labels = [["no", "yes"], ["false", "true"]]
-        self.pet_patterns = [["[PARAGRAPH]", ". Question: [QUESTION] ?  Is it [ANSWER] ? {}. [SEP]".format(self.tokenizer.mask_token), ""],
-                             ["[PARAGRAPH]", ". Question: [QUESTION] ? Is the correct answer \" [ANSWER] \" ? {}. [SEP]".format(self.tokenizer.mask_token), ""],
-                             ["[PARAGRAPH]", ". Based on the previous passage, [QUESTION] ? Is \" [ANSWER] \" a correct answer ? {}. [SEP]".format(self.tokenizer.mask_token), ""]]
+        self.pet_patterns = [
+            [
+                "[PARAGRAPH]",
+                f". Question: [QUESTION] ?  Is it [ANSWER] ? {self.tokenizer.mask_token}. [SEP]",
+                "",
+            ],
+            [
+                "[PARAGRAPH]",
+                f'. Question: [QUESTION] ? Is the correct answer \" [ANSWER] \" ? {self.tokenizer.mask_token}. [SEP]',
+                "",
+            ],
+            [
+                "[PARAGRAPH]",
+                f'. Based on the previous passage, [QUESTION] ? Is \" [ANSWER] \" a correct answer ? {self.tokenizer.mask_token}. [SEP]',
+                "",
+            ],
+        ]
         self.pet_pvps = list(itertools.product(self.pet_patterns, self.pet_labels))
         self._num_pets = len(self.pet_pvps)
-        self._pet_names = ["PET{}".format(i+1) for i in range(self._num_pets)]
+        self._pet_names = [f"PET{i + 1}" for i in range(self._num_pets)]
 
     def _get_file(self, split):
         '''
@@ -50,7 +64,7 @@ class MultiRCReader(object):
         elif split.lower() == "val":
             file = os.path.join("data", "fewglue", "MultiRC", "val.jsonl")
         else:
-            raise ValueError("Invalid split: %s" % split)
+            raise ValueError(f"Invalid split: {split}")
         return file
 
 
@@ -69,7 +83,7 @@ class MultiRCReader(object):
         data = []
 
         with open(file, 'r') as f_in:
-            for line in f_in.readlines():
+            for line in f_in:
                 json_string = json.loads(line)
                 json_string_passage = json_string["passage"]
 
@@ -85,16 +99,12 @@ class MultiRCReader(object):
                         answer = json_answers["text"]
                         dict_input = {"idx": qas_idx, "passage": passage, "question": question, "answer": str(answer)}
 
-                        if "label" in json_answers:
-                            lbl = json_answers["label"]
-                        else:
-                            lbl = -1
+                        lbl = json_answers["label"] if "label" in json_answers else -1
                         dict_output = {"lbl": lbl}
                         dict_input_output = {"input": dict_input, "output": dict_output}
                         data.append(dict_input_output)
 
-        data = np.asarray(data)
-        return data
+        return np.asarray(data)
 
     @property
     def pets(self):
@@ -211,7 +221,7 @@ class MultiRCReader(object):
 
                     list_pred_answers = []
 
-                    for answer in list_answers:
+                    for _ in list_answers:
                         pred_lbl = self.list_lbl[ans_ctr]
                         list_pred_answers.append({"idx": ans_ctr, "label": pred_lbl})
 

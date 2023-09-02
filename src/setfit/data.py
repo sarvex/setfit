@@ -86,10 +86,8 @@ def get_templated_dataset(
         dataset = Dataset.from_dict({})
 
     required_columns = {text_column, label_column}
-    column_names = set(dataset.column_names)
-    if column_names:
-        missing_columns = required_columns.difference(column_names)
-        if missing_columns:
+    if column_names := set(dataset.column_names):
+        if missing_columns := required_columns.difference(column_names):
             raise ValueError(f"The following columns are missing from the input dataset: {missing_columns}.")
 
     if bool(reference_dataset) == bool(candidate_labels):

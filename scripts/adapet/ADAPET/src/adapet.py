@@ -50,7 +50,9 @@ class adapet(torch.nn.Module):
         if config.pattern_idx == "random":
             self.pattern = lambda: random.choice(self.pattern_list)
         else:
-            assert config.pattern_idx > 0 and config.pattern_idx <= len(self.pattern_list), "This dataset has {} patterns".format(len(self.pattern_list))
+            assert config.pattern_idx > 0 and config.pattern_idx <= len(
+                self.pattern_list
+            ), f"This dataset has {len(self.pattern_list)} patterns"
             self.pattern = self.pattern_list[config.pattern_idx-1]
 
     def get_single_logits(self,  pet_mask_ids, mask_idx, list_lbl):
@@ -89,10 +91,7 @@ class adapet(torch.nn.Module):
         mask_prob = mask_prob.reshape(bs, self.num_lbl, self.config.max_num_lbl_tok, self.config.max_num_lbl_tok)
         mask_diag_prob = torch.diagonal(mask_prob, dim1=2, dim2=3)  # [bs, num_lbl, num_lbl_tok]
 
-        # Sum label probabilities across multiple positions to get label probability (will always be 1)
-        lbl_prob = torch.sum(mask_diag_prob, dim=2)  # [bs, num_lbl]
-
-        return lbl_prob
+        return torch.sum(mask_diag_prob, dim=2)
 
     def get_multilbl_logits(self, pet_mask_ids, mask_idx, batch_list_lbl ):
         '''
@@ -171,9 +170,8 @@ class adapet(torch.nn.Module):
             full_sup_loss = self.loss(reshape_lbl_logits, reshape_lbl)  # [bs * num_lbl * max_num_lbl_tok]
             full_sup_loss = full_sup_loss.reshape(lbl_logits.shape)
 
-            pet_disc_loss = torch.sum(full_sup_loss * real_mask) / torch.sum(real_mask)
+            return torch.sum(full_sup_loss * real_mask) / torch.sum(real_mask)
 
-        # Datasets where the label is 1 token
         else:
             # Get lbl logits
             lbl_logits = self.get_single_logits(pet_mask_ids, mask_idx, list_lbl) # [bs, num_lbl]
@@ -184,9 +182,7 @@ class adapet(torch.nn.Module):
                 lkup_lbl = self.lbl_idx_lkup(lbl)  # [bs, num_lbl]
             reshape_lbl = lkup_lbl.reshape(-1) # [bs*num_lbl]
 
-            pet_disc_loss = torch.mean(self.loss(reshape_lbl_logits, reshape_lbl))
-
-        return pet_disc_loss
+            return torch.mean(self.loss(reshape_lbl_logits, reshape_lbl))
 
 
     def get_pet_mlm_logits(self, input_ids, masked_input_ids):
@@ -200,9 +196,7 @@ class adapet(torch.nn.Module):
         pet_mask_rep = self.model(masked_input_ids, (masked_input_ids > 0).long())[0]  # [bs, max_seq_len, vocab_size]
         pet_mask_rep_vocab_prob = pet_mask_rep.softmax(dim=-1)  # [bs, max_num_lbl_tok, vocab_size]
 
-        pet_mask_rep_correct_vocab_prob = torch.gather(pet_mask_rep_vocab_prob, 2, input_ids[:,:,None]).squeeze(2) # [bs, max_seq_len]
-
-        return pet_mask_rep_correct_vocab_prob
+        return torch.gather(pet_mask_rep_vocab_prob, 2, input_ids[:,:,None]).squeeze(2)
 
 
     def forward(self, batch):
@@ -216,8 +210,14 @@ class adapet(torch.nn.Module):
         pet_disc_loss.backward()
 
         # PET MLM loss
-        input_ids, mask_input_ids, prep_lbl, tgt = self.dataset_reader.prepare_batch(batch, "PET_MLM_{}".format(
-            self.get_pattern()))
+        (
+            input_ids,
+            mask_input_ids,
+            prep_lbl,
+            tgt,
+        ) = self.dataset_reader.prepare_batch(
+            batch, f"PET_MLM_{self.get_pattern()}"
+        )
         correct_vocab_prob = self.get_pet_mlm_logits(input_ids, mask_input_ids)
 
         max_seq_len = correct_vocab_prob.shape[1]
@@ -351,14 +351,14 @@ class adapet(torch.nn.Module):
         :return:
         '''
 
-        pattern = "EVAL_{}".format(pattern)
+        pattern = f"EVAL_{pattern}"
 
         pet_mask_ids, mask_idx, list_lbl = self.dataset_reader.prepare_batch(batch, pattern)
 
         if self.config.dataset.lower() == 'fewglue/wsc':
             lbl_logits = self.get_eval_wsc_logits(pet_mask_ids, mask_idx, list_lbl)
         elif isinstance(list_lbl[0], list):
-            pattern = "EVAL_{}".format(pattern)
+            pattern = f"EVAL_{pattern}"
             pet_mask_ids, mask_idx, list_lbl = self.dataset_reader.prepare_batch(batch, pattern)
             lbl_logits = self.get_eval_multilbl_logits(pet_mask_ids, mask_idx, list_lbl)
         else:
@@ -374,22 +374,20 @@ class adapet(torch.nn.Module):
         :return:
         '''
 
-        if self.config.pattern_idx == "random":
-            list_lbl_logits = []
-            for pattern in self.pattern_list:
-                lbl_pred, lbl_logits = self.predict_helper(batch, pattern)
-                list_lbl_logits.append(lbl_logits)
-            pattern_lbl_logits = torch.stack(list_lbl_logits, dim=0) # [num_pattern, bs, num_lbl]
-
-            pattern_lbl_prob = pattern_lbl_logits.softmax(dim=-1)
-
-            lbl_logits = torch.mean(pattern_lbl_prob, dim=0)
-            lbl_pred = torch.argmax(lbl_logits, dim=1)
-
-            return lbl_pred, lbl_logits
-
-        else:
+        if self.config.pattern_idx != "random":
             return self.predict_helper(batch, self.get_pattern())
+        list_lbl_logits = []
+        for pattern in self.pattern_list:
+            lbl_pred, lbl_logits = self.predict_helper(batch, pattern)
+            list_lbl_logits.append(lbl_logits)
+        pattern_lbl_logits = torch.stack(list_lbl_logits, dim=0) # [num_pattern, bs, num_lbl]
+
+        pattern_lbl_prob = pattern_lbl_logits.softmax(dim=-1)
+
+        lbl_logits = torch.mean(pattern_lbl_prob, dim=0)
+        lbl_pred = torch.argmax(lbl_logits, dim=1)
+
+        return lbl_pred, lbl_logits
 
     def get_pattern(self):
         '''

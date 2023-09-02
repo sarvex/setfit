@@ -55,13 +55,7 @@ class OnnxSetFitModel(torch.nn.Module):
 
         # If the model_head is none we are using a sklearn head and only output
         # the embeddings from the setfit model
-        if self.model_head is None:
-            return embeddings
-
-        # If head is set then we have a fully torch based model and make the final predictions
-        # with the head.
-        out = self.model_head(embeddings)
-        return out
+        return embeddings if self.model_head is None else self.model_head(embeddings)
 
 
 def export_onnx_setfit_model(setfit_model: OnnxSetFitModel, inputs, output_path, opset: int = 12):
@@ -79,15 +73,13 @@ def export_onnx_setfit_model(setfit_model: OnnxSetFitModel, inputs, output_path,
     input_names = list(inputs.keys())
     output_names = ["logits"]
 
-    # Setup the dynamic axes for onnx conversion.
-    dynamic_axes_input = {}
-    for input_name in input_names:
-        dynamic_axes_input[input_name] = {0: "batch_size", 1: "sequence"}
-
-    dynamic_axes_output = {}
-    for output_name in output_names:
-        dynamic_axes_output[output_name] = {0: "batch_size"}
-
+    dynamic_axes_input = {
+        input_name: {0: "batch_size", 1: "sequence"}
+        for input_name in input_names
+    }
+    dynamic_axes_output = {
+        output_name: {0: "batch_size"} for output_name in output_names
+    }
     # Move inputs to the right device
     target = setfit_model.model_body.device
     args = tuple(value.to(target) for value in inputs.values())
@@ -101,7 +93,7 @@ def export_onnx_setfit_model(setfit_model: OnnxSetFitModel, inputs, output_path,
             opset_version=opset,
             input_names=["input_ids", "attention_mask", "token_type_ids"],
             output_names=output_names,
-            dynamic_axes={**dynamic_axes_input, **dynamic_axes_output},
+            dynamic_axes=dynamic_axes_input | dynamic_axes_output,
         )
 
 
@@ -154,15 +146,12 @@ def export_sklearn_head_to_onnx(model_head: LogisticRegression, opset: int) -> o
     else:
         sklearn_model = model_head
 
-    # Convert sklearn head into ONNX format
-    onnx_model = convert_sklearn(
+    return convert_sklearn(
         sklearn_model,
         initial_types=[("model_head", dtype)],
         target_opset=opset,
         options={id(sklearn_model): {"zipmap": False}},
     )
-
-    return onnx_model
 
 
 def hummingbird_export(model, data_sample):
@@ -250,7 +239,7 @@ def export_onnx(
         else:
             onnx_head = export_sklearn_head_to_onnx(model_head, opset)
 
-        max_opset = max([x.version for x in onnx_head.opset_import])
+        max_opset = max(x.version for x in onnx_head.opset_import)
 
         if max_opset != opset:
             warnings.warn(

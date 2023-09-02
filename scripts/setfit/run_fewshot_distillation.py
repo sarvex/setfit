@@ -69,9 +69,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--is_dev_set", type=bool, default=False)
     parser.add_argument("--is_test_set", type=bool, default=False)
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 class RunFewShotDistill:
@@ -284,9 +282,9 @@ class RunFewShotDistill:
         y_train_teacher_pred_prob = self.trained_teacher_model.model_head.predict_proba(x_train_embd_student)
 
         train_raw_student_prob = Dataset.from_dict({"text": x_train, "score": list(y_train_teacher_pred_prob)})
-        metric = self.bl_stdnt_distill.standard_model_distillation(train_raw_student_prob, x_test, y_test, num_classes)
-
-        return metric
+        return self.bl_stdnt_distill.standard_model_distillation(
+            train_raw_student_prob, x_test, y_test, num_classes
+        )
 
 
 def main():

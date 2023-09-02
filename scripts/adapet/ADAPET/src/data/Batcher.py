@@ -38,10 +38,7 @@ class Batcher(object):
     @staticmethod
     def my_collate_fn(batch):
 
-        dict_batch = {}
-        dict_batch["input"] = {}
-        dict_batch["output"] = {}
-
+        dict_batch = {"input": {}, "output": {}}
         for datapoint in batch:
             for (k, v) in datapoint["input"].items():
                 if k in dict_batch["input"]:
@@ -99,8 +96,7 @@ class Batcher(object):
             self._init_train()
 
         while True:
-            for x in self.train_loader:
-                yield x
+            yield from self.train_loader
 
     def get_eval_train_batch(self):
         '''
@@ -110,8 +106,7 @@ class Batcher(object):
         '''
         if self.eval_train_loader is None:
             self._init_train()
-        for x in self.eval_train_loader:
-            yield x
+        yield from self.eval_train_loader
 
     def get_dev_batch(self):
         '''
@@ -122,8 +117,7 @@ class Batcher(object):
         if self.dev_loader is None:
             self._init_dev()
 
-        for x in self.dev_loader:
-            yield x
+        yield from self.dev_loader
 
 
     def get_test_batch(self):
@@ -135,5 +129,4 @@ class Batcher(object):
         if self.test_loader is None:
             self._init_test()
 
-        for x in self.test_loader:
-            yield x
+        yield from self.test_loader
